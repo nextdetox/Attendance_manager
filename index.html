@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>출석 관리</title>
+<style>
+  :root {
+    --bg: #0a0a0d;
+    --panel: #16161c;
+    --panel2: #1e1e26;
+    --border: #2a2a33;
+    --text: #f0f0f3;
+    --text-dim: #9a9aa5;
+    --text-faint: #66666f;
+    --blue: #3b82f6;
+    --blue-dim: #1e3a5f;
+    --red: #ef4444;
+    --red-dim: #4a1c1c;
+    --amber: #f59e0b;
+    --amber-dim: #4a3a12;
+    --green: #22c55e;
+    --green-dim: #1c3a24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    min-height: 100vh;
+  }
+  button, input, select {
+    font-family: inherit;
+    font-size: 14px;
+  }
+  input, select {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--blue);
+  }
+  button {
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    padding: 8px 12px;
+    transition: background 0.15s;
+  }
+  button:hover { background: #26262f; }
+  .btn-primary {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger {
+    background: var(--red-dim);
+    border-color: #6b2b2b;
+    color: #fca5a5;
+  }
+  .btn-danger:hover { background: #5c2323; }
+  .hidden { display: none !important; }
+
+  /* login */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .login-card h1 {
+    font-size: 20px;
+    text-align: center;
+    margin: 0 0 6px;
+  }
+  .login-card p {
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    margin: 0 0 20px;
+  }
+  .login-card label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .login-card input {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+  .login-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    background: var(--panel2);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .login-tabs button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 7px;
+    border-radius: 6px;
+  }
+  .login-tabs button.active {
+    background: var(--blue);
+    color: white;
+  }
+  .error-text {
+    color: var(--red);
+    font-size: 12px;
+    margin: -8px 0 12px;
+  }
+
+  /* app layout */
+  #app-screen {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .topbar h1 {
+    font-size: 19px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 800px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  /* calendar */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .cal-header span { font-weight: 600; }
+  .cal-header button {
+    width: 30px; height: 30px;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+  .cal-weekdays div { padding: 4px 0; }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(64px, auto);
+    gap: 4px;
+  }
+  .cal-cell {
+    min-height: 64px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    padding: 4px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    color: var(--text);
+    overflow: hidden;
+  }
+  .cal-cell:hover { background: #1c1c24; }
+  .cal-cell.empty { border: none; visibility: hidden; }
+  .cal-cell.selected { border-color: var(--blue); background: rgba(59,130,246,0.12); }
+  .cal-cell.attended { border-color: #2f6b3f; background: rgba(34,197,94,0.08); }
+  .cal-cell.attended.selected { border-color: var(--blue); }
+  .cal-cell.holiday { background: rgba(239,68,68,0.10); border-color: rgba(239,68,68,0.4); }
+  .cal-cell.holiday.selected { border-color: var(--blue); background: rgba(239,68,68,0.14); }
+  .cal-cell.holiday .daynum { color: #f87171; font-weight: 700; }
+  .holiday-label {
+    font-size: 8px;
+    font-weight: 600;
+    color: #f87171;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .event-tags { display: flex; gap: 2px; flex-wrap: wrap; }
+  .event-tag {
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+  .event-exam { background: #4a1c1c; color: #fca5a5; }
+  .event-cancel { background: #4a3a12; color: #fcd34d; }
+  .event-note { background: #26262f; color: #b0b0b8; }
+  .cal-cell .daynum { font-size: 12px; color: var(--text-dim); }
+  .cal-cell.today .daynum { color: var(--blue); font-weight: 700; }
+  .cal-dots { display: flex; flex-wrap: wrap; gap: 2px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .cal-cell .status-label { font-size: 9px; color: var(--text-faint); }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+
+  .stats-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .stats-section h3 {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px;
+  }
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-row:last-child { border-bottom: none; }
+  .traffic-light {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .traffic-light.blink { animation: blink-pulse 1s infinite; }
+  @keyframes blink-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* right panel tabs */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .tabs button {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+  .tabs button.active { background: var(--panel2); color: var(--text); }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .field input, .field select { width: 100%; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .day-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .day-picker button {
+    width: 36px; height: 36px;
+    padding: 0;
+    border-radius: 8px;
+  }
+  .day-picker button.selected {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+  }
+
+  .course-item {
+    background: var(--panel2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .course-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .course-item-name { font-size: 14px; font-weight: 600; }
+  .session-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .session-tag {
+    font-size: 10px;
+    background: #2a2a35;
+    color: var(--text-dim);
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+  .icon-btn {
+    padding: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+  }
+  .icon-btn:hover { color: var(--red); background: transparent; }
+
+  .day-course-card {
+    background: var(--panel2);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .day-course-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .day-course-top .name { font-weight: 600; font-size: 14px; }
+  .day-course-top .meta { font-size: 11px; color: var(--text-faint); }
+  .status-btn-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .status-btn {
+    flex: 1;
+    font-size: 12px;
+    padding: 7px;
+    text-align: center;
+  }
+  .status-btn.present-active { background: var(--green-dim); border-color: #2f6b3f; color: #86efac; }
+  .status-btn.absent-active { background: var(--red-dim); border-color: #6b2b2b; color: #fca5a5; }
+  .partial-hint { font-size: 11px; color: var(--amber); margin-top: 4px; }
+  .partial-input-label { font-size: 11px; color: var(--text-faint); display: block; margin-bottom: 3px; }
+
+  .delete-row { display: flex; gap: 6px; margin-top: 8px; }
+  .delete-row button { flex: 1; font-size: 11px; padding: 6px; }
+
+  .empty-note { color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0; }
+
+  .whole-day-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+  .whole-day-actions button { flex: 1; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="boot-loading" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#9a9aa5; font-size:13px;">불러오는 중...</div>
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <h1>📅 출석 관리</h1>
+    <p>어디서든 접속해 출석을 기록하세요.<br/>계정은 이 브라우저에 저장됩니다.</p>
+    <div class="login-tabs">
+      <button id="tab-login" class="active">로그인</button>
+      <button id="tab-signup">회원가입</button>
+    </div>
+    <div id="login-form">
+      <label>이메일</label>
+      <input id="login-id" type="email" placeholder="이메일" autocomplete="username" />
+      <label>비밀번호</label>
+      <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <div class="error-text hidden" id="login-error"></div>
+      <button class="btn-primary" id="login-submit" style="width:100%">로그인</button>
+    </div>
+    <div id="signup-form" class="hidden">
+      <label>이메일</label>
+      <input id="signup-id" type="email" placeholder="이메일" autocomplete="username" />
+      <label>비밀번호</label>
+      <input id="signup-pw" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="new-password" />
+      <label>비밀번호 확인</label>
+      <input id="signup-pw2" type="password" placeholder="비밀번호 확인" autocomplete="new-password" />
+      <div class="error-text hidden" id="signup-error"></div>
+      <button class="btn-primary" id="signup-submit" style="width:100%">회원가입</button>
+    </div>
+    <p id="loading-note" class="hidden" style="text-align:center; color:var(--text-dim); font-size:12px; margin-top:12px;">처리 중...</p>
+  </div>
+</div>
+
+<div id="app-screen" class="hidden">
+  <div class="topbar">
+    <h1>📅 출석 관리</h1>
+    <div class="user-info">
+      <span id="current-user-label"></span>
+      <button id="logout-btn">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div class="panel">
+      <div class="cal-header">
+        <button id="prev-month">◀</button>
+        <span id="cal-title"></span>
+        <button id="next-month">▶</button>
+      </div>
+      <div class="cal-weekdays">
+        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:#888"></span>미체크(수업만 있음)</span>
+        <span><span class="dot" style="background:var(--green)"></span>출석</span>
+        <span><span class="dot" style="background:var(--amber)"></span>부분결석</span>
+        <span><span class="dot" style="background:var(--red)"></span>결석</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.6);"></span>공휴일</span>
+      </div>
+      <div class="stats-section" id="stats-section">
+        <h3>수업별 결석 현황</h3>
+        <div id="stats-list"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button id="tab-register" class="active">수업 등록</button>
+        <button id="tab-day">선택한 날짜</button>
+      </div>
+
+      <div id="panel-register">
+        <div class="field-row">
+          <div class="field">
+            <label>학기 시작일 (1주차 월요일)</label>
+            <input id="semester-start" type="date" />
+          </div>
+          <div class="field">
+            <label>총 주차</label>
+            <input id="total-weeks" type="number" min="1" max="20" value="15" />
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:4px;">
+          <h3 style="font-size:13px; margin:0 0 10px;">새 수업 등록</h3>
+          <div class="field">
+            <label>수업 이름</label>
+            <input id="new-course-name" type="text" placeholder="예: 자료구조" />
+          </div>
+          <div class="field">
+            <label>요일 선택 (여러 개 가능)</label>
+            <div class="day-picker" id="day-picker"></div>
+          </div>
+          <div class="field">
+            <label>주당 수업 시간 (선택한 각 요일마다 적용)</label>
+            <input id="new-course-hours" type="number" min="0.5" step="0.5" value="1" />
+          </div>
+          <div class="error-text hidden" id="course-error"></div>
+          <button class="btn-primary" id="add-course-btn" style="width:100%">+ 수업 등록</button>
+        </div>
+
+        <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:16px;">
+          <h3 style="font-size:13px; margin:0 0 10px;">등록된 수업</h3>
+          <div id="course-list"></div>
+        </div>
+      </div>
+
+      <div id="panel-day" class="hidden">
+        <div id="day-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ===== Firebase 설정: 아래 값을 본인 Firebase 콘솔에서 복사한 값으로 교체하세요 =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDAq8ODroNp2b978RK8b4XbMbLLJUd-xjw",
+  authDomain: "attendance-manager-4f88b.firebaseapp.com",
+  projectId: "attendance-manager-4f88b",
+  storageBucket: "attendance-manager-4f88b.firebasestorage.app",
+  messagingSenderId: "740301105274",
+  appId: "1:740301105274:web:9f3e5d78f18d6ab103f3c3"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+// ================================================================================
+
+const DAY_NAMES = ["일","월","화","수","목","금","토"];
+
+// 2026~2027년 대한민국 공휴일 (대체공휴일 포함)
+// 오늘 날짜 기준 기본 캘린더 화면은 2026년이라, 2027년 데이터만 있으면 아무 것도 안 보이는 문제가 있어
+// 2026년 데이터도 함께 넣었습니다. 2026년 5월부터 시행된 「관공서의 공휴일에 관한 규정」 개정으로
+// 노동절(5/1)·제헌절(7/17)이 대체공휴일 적용 대상 법정 공휴일로 새로 포함된 점을 반영했습니다.
+// 음력 기반 날짜(설날·추석·부처님오신날)를 포함해 정부 발표와 다를 수 있으니 학사일정 확정 전 재확인을 권장합니다.
+const KR_HOLIDAYS = {
+  // ---- 2026년 ----
+  "2026-01-01": "신정",
+  "2026-02-16": "설날 연휴",
+  "2026-02-17": "설날",
+  "2026-02-18": "설날 연휴",
+  "2026-03-01": "삼일절",
+  "2026-03-02": "삼일절 대체공휴일",
+  "2026-05-01": "노동절",
+  "2026-05-05": "어린이날",
+  "2026-05-24": "부처님오신날",
+  "2026-05-25": "부처님오신날 대체공휴일",
+  "2026-06-03": "지방선거(임시공휴일)",
+  "2026-06-06": "현충일",
+  "2026-07-17": "제헌절",
+  "2026-08-15": "광복절",
+  "2026-08-17": "광복절 대체공휴일",
+  "2026-09-24": "추석 연휴",
+  "2026-09-25": "추석",
+  "2026-09-26": "추석 연휴",
+  "2026-10-03": "개천절",
+  "2026-10-05": "개천절 대체공휴일",
+  "2026-10-09": "한글날",
+  "2026-12-25": "성탄절",
+  // ---- 2027년 ----
+  "2027-01-01": "신정",
+  "2027-02-06": "설날 연휴",
+  "2027-02-07": "설날",
+  "2027-02-08": "설날 연휴",
+  "2027-02-09": "설날 대체공휴일",
+  "2027-03-01": "삼일절",
+  "2027-05-01": "노동절",
+  "2027-05-03": "노동절 대체공휴일",
+  "2027-05-05": "어린이날",
+  "2027-05-13": "부처님오신날",
+  "2027-06-06": "현충일",
+  "2027-07-17": "제헌절",
+  "2027-07-19": "제헌절 대체공휴일",
+  "2027-08-15": "광복절",
+  "2027-08-16": "광복절 대체공휴일",
+  "2027-09-14": "추석 연휴",
+  "2027-09-15": "추석",
+  "2027-09-16": "추석 연휴",
+  "2027-10-03": "개천절",
+  "2027-10-04": "개천절 대체공휴일",
+  "2027-10-09": "한글날",
+  "2027-10-11": "한글날 대체공휴일",
+  "2027-12-25": "성탄절",
+  "2027-12-27": "성탄절 대체공휴일"
+};
+
+// 결석 경고 기준
+// 학교 규정: 학기 전체 수업시간의 1/3을 결석하면 F 처리.
+// 예) 주 3시간 수업 x 15주 = 총 45시간 -> 결석 한도 15시간
+//     주 2시간 수업 x 15주 = 총 30시간 -> 결석 한도 10시간
+// 경고색은 이 한도를 기준으로 한 비율(노랑: 한도의 1/2, 빨강: 한도의 2/3)로 계산합니다.
+// (기존 고정값이었던 "한도 15 / 노랑 8 / 빨강 10"과 정확히 같은 비율입니다)
+const ABSENCE_LIMIT_FRACTION = 1 / 3; // 총 수업시간 대비 결석 한도 비율
+const ABSENCE_WARN_YELLOW_RATIO = 1 / 2; // 한도 대비 노랑불 시작 비율
+const ABSENCE_WARN_RED_RATIO = 2 / 3;    // 한도 대비 빨강불 시작 비율
+const DAY_DOT_COLORS = ["#f87171","#fb923c","#fbbf24","#4ade80","#60a5fa","#818cf8","#c084fc"];
+
+// 수업 하나의 "주당 총 시간" (같은 수업이 여러 요일에 걸쳐 있으면 합산)
+function getCourseWeeklyHours(course) {
+  return course.sessions.reduce((sum, s) => sum + s.hours, 0);
+}
+
+// 수업별 결석 한도/경고 기준 계산
+function getCourseLimits(course) {
+  const weeklyHours = getCourseWeeklyHours(course);
+  const totalHours = weeklyHours * state.totalWeeks;
+  const limit = totalHours * ABSENCE_LIMIT_FRACTION;      // 이 시간을 넘기면 F
+  const yellow = limit * ABSENCE_WARN_YELLOW_RATIO;        // 노랑불 시작
+  const red = limit * ABSENCE_WARN_RED_RATIO;              // 빨강불 시작
+  return { weeklyHours, totalHours, limit, yellow, red };
+}
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+// 소수점이 길게 나오는 걸 방지 (예: 3.3333333333 -> 3.33, 5.0 -> 5)
+function formatHours(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function ymdLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseLocalDate(str) {
+  const [y, m, d] = str.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function addDaysLocal(dateStr, n) {
+  const d = parseLocalDate(dateStr);
+  d.setDate(d.getDate() + n);
+  return ymdLocal(d);
+}
+
+// 학기 시작일(월요일 기준) + 주차 + 요일(0=일..6=토) -> 실제 날짜 문자열
+function getDateForWeek(semesterStart, weekIndex, dayOfWeek) {
+  const start = parseLocalDate(semesterStart);
+  const startDow = start.getDay(); // 보통 1(월)
+  // dayOfWeek가 startDow보다 이전 요일이면 같은 주 내에서 +7 보정
+  let diff = dayOfWeek - startDow;
+  if (diff < 0) diff += 7;
+  const base = addDaysLocal(semesterStart, diff);
+  return addDaysLocal(base, weekIndex * 7);
+}
+
+function monthMatrix(year, month) {
+  const first = new Date(year, month, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+// ---------- Firestore helpers ----------
+// 사용자별 출석 데이터는 'attendance' 컬렉션의 문서(문서ID = uid)에 저장됩니다.
+async function getUserDataFromCloud(uid) {
+  const ref = doc(db, "attendance", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return snap.data();
+}
+async function saveUserDataToCloud(uid, data) {
+  const ref = doc(db, "attendance", uid);
+  await setDoc(ref, data);
+}
+
+// ---------- app state ----------
+let state = {
+  username: null,
+  uid: null,
+  events: {}, // { 'YYYY-MM-DD': [{id, text, type}] } type: 'exam' | 'cancel' | 'note'
+  semesterStart: ymdLocal((() => {
+    const today = new Date();
+    const day = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((day + 6) % 7));
+    return monday;
+  })()),
+  totalWeeks: 15,
+  courses: [], // {id, name, sessions: [{id, dayOfWeek, hours}]}
+  records: {}, // { [courseId]: { [weekIndex]: { [sessionId]: {status: 'present'|'absent'|'partial', absentHours} } } }
+  viewDate: new Date(),
+  selectedDate: null,
+  rightTab: "register",
+  newCourseDays: []
+};
+
+let saveTimer = null;
+function persist() {
+  if (!state.uid) return;
+  // 짧은 디바운스로 잦은 저장 호출을 묶어서 Firestore 쓰기 횟수를 줄임
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await saveUserDataToCloud(state.uid, {
+        semesterStart: state.semesterStart,
+        totalWeeks: state.totalWeeks,
+        courses: state.courses,
+        records: state.records,
+        events: state.events
+      });
+    } catch (e) {
+      console.error("클라우드 저장 실패", e);
+    }
+  }, 400);
+}
+
+// ---------- login/signup UI ----------
+const loginScreen = document.getElementById("login-screen");
+const appScreen = document.getElementById("app-screen");
+
+document.getElementById("tab-login").onclick = () => {
+  document.getElementById("tab-login").classList.add("active");
+  document.getElementById("tab-signup").classList.remove("active");
+  document.getElementById("login-form").classList.remove("hidden");
+  document.getElementById("signup-form").classList.add("hidden");
+};
+document.getElementById("tab-signup").onclick = () => {
+  document.getElementById("tab-signup").classList.add("active");
+  document.getElementById("tab-login").classList.remove("active");
+  document.getElementById("signup-form").classList.remove("hidden");
+  document.getElementById("login-form").classList.add("hidden");
+};
+
+const loadingNote = document.getElementById("loading-note");
+function setLoading(on) {
+  loadingNote.classList.toggle("hidden", !on);
+}
+
+// 클라이언트 측 추가 보호: 짧은 시간에 로그인 실패가 반복되면 잠시 버튼을 잠급니다.
+// (Firebase 서버 차원의 too-many-requests 차단과는 별개의 보조 장치입니다.)
+let loginFailCount = 0;
+let lockUntil = 0;
+const MAX_FAILS = 5;
+const LOCK_MS = 30000;
+
+function isLocked() {
+  return Date.now() < lockUntil;
+}
+function remainingLockSeconds() {
+  return Math.ceil((lockUntil - Date.now()) / 1000);
+}
+function registerLoginFail() {
+  loginFailCount++;
+  if (loginFailCount >= MAX_FAILS) {
+    lockUntil = Date.now() + LOCK_MS;
+    loginFailCount = 0;
+  }
+}
+function registerLoginSuccess() {
+  loginFailCount = 0;
+  lockUntil = 0;
+}
+
+function firebaseErrorToKorean(code) {
+  const map = {
+    "auth/invalid-email": "이메일 형식이 올바르지 않습니다",
+    "auth/user-not-found": "존재하지 않는 계정입니다",
+    "auth/wrong-password": "비밀번호가 일치하지 않습니다",
+    "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않습니다",
+    "auth/email-already-in-use": "이미 가입된 이메일입니다",
+    "auth/weak-password": "비밀번호는 6자 이상이어야 해요",
+    "auth/network-request-failed": "네트워크 연결을 확인해주세요",
+    "auth/too-many-requests": "로그인 시도가 너무 많아 잠시 차단됐어요. 몇 분 후 다시 시도해주세요"
+  };
+  return map[code] || "오류가 발생했습니다. 잠시 후 다시 시도해주세요";
+}
+
+document.getElementById("login-submit").onclick = async () => {
+  const id = document.getElementById("login-id").value.trim();
+  const pw = document.getElementById("login-pw").value;
+  const errEl = document.getElementById("login-error");
+  errEl.classList.add("hidden");
+
+  if (isLocked()) {
+    errEl.textContent = `로그인 시도가 너무 많아요. ${remainingLockSeconds()}초 후 다시 시도해주세요`;
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  if (!id || !pw) {
+    errEl.textContent = "이메일과 비밀번호를 입력해주세요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  setLoading(true);
+  try {
+    await signInWithEmailAndPassword(auth, id, pw);
+    registerLoginSuccess();
+    // 로그인 성공 시 onAuthStateChanged 에서 loginAs 호출됨
+  } catch (e) {
+    registerLoginFail();
+    if (isLocked()) {
+      errEl.textContent = `로그인 시도가 너무 많아요. ${remainingLockSeconds()}초 후 다시 시도해주세요`;
+    } else {
+      errEl.textContent = firebaseErrorToKorean(e.code);
+    }
+    errEl.classList.remove("hidden");
+  } finally {
+    setLoading(false);
+  }
+};
+
+document.getElementById("signup-submit").onclick = async () => {
+  const id = document.getElementById("signup-id").value.trim();
+  const pw = document.getElementById("signup-pw").value;
+  const pw2 = document.getElementById("signup-pw2").value;
+  const errEl = document.getElementById("signup-error");
+  errEl.classList.add("hidden");
+  if (!id || !pw) {
+    errEl.textContent = "이메일과 비밀번호를 입력해주세요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (pw.length < 6) {
+    errEl.textContent = "비밀번호는 6자 이상이어야 해요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (pw !== pw2) {
+    errEl.textContent = "비밀번호가 일치하지 않습니다";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  setLoading(true);
+  try {
+    await createUserWithEmailAndPassword(auth, id, pw);
+    // 가입 성공 시 onAuthStateChanged 에서 loginAs 호출됨
+  } catch (e) {
+    errEl.textContent = firebaseErrorToKorean(e.code);
+    errEl.classList.remove("hidden");
+  } finally {
+    setLoading(false);
+  }
+};
+
+document.getElementById("logout-btn").onclick = async () => {
+  await signOut(auth);
+};
+
+async function loginAs(user) {
+  state.username = user.email;
+  state.uid = user.uid;
+  let data = null;
+  try {
+    data = await getUserDataFromCloud(user.uid);
+  } catch (e) {
+    console.error("클라우드 데이터 불러오기 실패", e);
+  }
+  if (data) {
+    state.semesterStart = data.semesterStart || state.semesterStart;
+    state.totalWeeks = data.totalWeeks || 15;
+    state.courses = data.courses || [];
+    state.records = data.records || {};
+    state.events = data.events || {};
+  } else {
+    state.courses = [];
+    state.records = {};
+    state.events = {};
+  }
+  document.getElementById("current-user-label").textContent = `${state.username}님`;
+  document.getElementById("semester-start").value = state.semesterStart;
+  document.getElementById("total-weeks").value = state.totalWeeks;
+  loginScreen.classList.add("hidden");
+  appScreen.classList.remove("hidden");
+  renderAll();
+}
+
+function logoutUI() {
+  state.username = null;
+  state.uid = null;
+  appScreen.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+  document.getElementById("login-id").value = "";
+  document.getElementById("login-pw").value = "";
+}
+
+// Firebase Auth 상태 변화를 감지해서 자동으로 로그인/로그아웃 UI 전환
+// (한 번 로그인하면 새로고침해도 유지되고, 다른 기기에서 같은 계정으로 로그인하면 그 기기에서도 데이터가 뜸)
+onAuthStateChanged(auth, (user) => {
+  document.getElementById("boot-loading").classList.add("hidden");
+  if (user) {
+    loginAs(user);
+  } else {
+    logoutUI();
+  }
+});
+
+// ---------- day picker (for new course) ----------
+const dayPicker = document.getElementById("day-picker");
+DAY_NAMES.forEach((name, i) => {
+  const btn = document.createElement("button");
+  btn.textContent = name;
+  btn.type = "button";
+  btn.onclick = () => {
+    const idx = state.newCourseDays.indexOf(i);
+    if (idx >= 0) state.newCourseDays.splice(idx, 1);
+    else state.newCourseDays.push(i);
+    renderDayPicker();
+  };
+  btn.dataset.day = i;
+  dayPicker.appendChild(btn);
+});
+function renderDayPicker() {
+  [...dayPicker.children].forEach((btn, i) => {
+    btn.classList.toggle("selected", state.newCourseDays.includes(i));
+  });
+}
+
+// ---------- add course ----------
+document.getElementById("add-course-btn").onclick = () => {
+  const name = document.getElementById("new-course-name").value.trim();
+  const hours = Number(document.getElementById("new-course-hours").value);
+  const errEl = document.getElementById("course-error");
+  errEl.classList.add("hidden");
+
+  if (!name) {
+    errEl.textContent = "수업 이름을 입력해주세요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (state.newCourseDays.length === 0) {
+    errEl.textContent = "요일을 하나 이상 선택해주세요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (!hours || hours <= 0) {
+    errEl.textContent = "시간을 올바르게 입력해주세요";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const sessions = state.newCourseDays.map(d => ({ id: uid(), dayOfWeek: d, hours }));
+  state.courses.push({ id: uid(), name, sessions });
+
+  document.getElementById("new-course-name").value = "";
+  document.getElementById("new-course-hours").value = "1";
+  state.newCourseDays = [];
+  renderDayPicker();
+  persist();
+  renderAll();
+};
+
+document.getElementById("semester-start").onchange = (e) => {
+  state.semesterStart = e.target.value;
+  persist();
+  renderAll();
+};
+document.getElementById("total-weeks").onchange = (e) => {
+  state.totalWeeks = Math.max(1, Number(e.target.value) || 1);
+  persist();
+  renderAll();
+};
+
+// ---------- tabs ----------
+document.getElementById("tab-register").onclick = () => switchTab("register");
+document.getElementById("tab-day").onclick = () => switchTab("day");
+function switchTab(tab) {
+  state.rightTab = tab;
+  document.getElementById("tab-register").classList.toggle("active", tab === "register");
+  document.getElementById("tab-day").classList.toggle("active", tab === "day");
+  document.getElementById("panel-register").classList.toggle("hidden", tab !== "register");
+  document.getElementById("panel-day").classList.toggle("hidden", tab !== "day");
+}
+
+// ---------- calendar navigation ----------
+document.getElementById("prev-month").onclick = () => {
+  state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() - 1, 1);
+  renderCalendar();
+};
+document.getElementById("next-month").onclick = () => {
+  state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() + 1, 1);
+  renderCalendar();
+};
+
+// ---------- data helpers ----------
+function sessionsByDate() {
+  const map = {};
+  state.courses.forEach(course => {
+    course.sessions.forEach(s => {
+      for (let wk = 0; wk < state.totalWeeks; wk++) {
+        const date = getDateForWeek(state.semesterStart, wk, s.dayOfWeek);
+        if (!map[date]) map[date] = [];
+        map[date].push({ courseId: course.id, courseName: course.name, session: s, weekIndex: wk });
+      }
+    });
+  });
+  return map;
+}
+
+function getRecord(courseId, weekIndex, sessionId) {
+  return state.records[courseId]?.[weekIndex]?.[sessionId] || null;
+}
+function setRecord(courseId, weekIndex, sessionId, value) {
+  if (!state.records[courseId]) state.records[courseId] = {};
+  if (!state.records[courseId][weekIndex]) state.records[courseId][weekIndex] = {};
+  if (value === null) {
+    delete state.records[courseId][weekIndex][sessionId];
+  } else {
+    state.records[courseId][weekIndex][sessionId] = value;
+  }
+}
+
+function computeStats() {
+  const stats = {};
+  state.courses.forEach(course => {
+    const { totalHours, limit, yellow, red } = getCourseLimits(course);
+    let absentHours = 0;
+    const courseRecords = state.records[course.id] || {};
+    Object.values(courseRecords).forEach(weekRec => {
+      Object.values(weekRec).forEach(rec => {
+        if (rec.status === "absent" || rec.status === "partial") absentHours += rec.absentHours;
+      });
+    });
+    let level = "safe"; // safe | warn | danger | over
+    if (absentHours >= limit) level = "over";
+    else if (absentHours >= red) level = "danger";
+    else if (absentHours >= yellow) level = "warn";
+    stats[course.id] = { totalHours, absentHours, limit, yellow, red, level };
+  });
+  return stats;
+}
+
+// ---------- delete course (whole or single day) ----------
+function deleteCourseWhole(courseId) {
+  state.courses = state.courses.filter(c => c.id !== courseId);
+  delete state.records[courseId];
+  persist();
+  renderAll();
+}
+
+function deleteCourseSingleDay(courseId, weekIndex, sessionId) {
+  // 해당 날짜의 기록만 초기화 (출석으로 되돌림) — "하루만 삭제"는 그 날의 결석기록 제거를 의미
+  setRecord(courseId, weekIndex, sessionId, null);
+  persist();
+  renderAll();
+}
+
+// ---------- rendering ----------
+function renderAll() {
+  renderCalendar();
+  renderCourseList();
+  renderStats();
+  if (state.rightTab === "day") renderDayPanel();
+}
+
+function renderCalendar() {
+  const year = state.viewDate.getFullYear();
+  const month = state.viewDate.getMonth();
+  document.getElementById("cal-title").textContent = `${year}년 ${month + 1}월`;
+
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  const cells = monthMatrix(year, month);
+  const byDate = sessionsByDate();
+  const todayStr = ymdLocal(new Date());
+
+  cells.forEach(date => {
+    const cell = document.createElement("button");
+    if (!date) {
+      cell.className = "cal-cell empty";
+      grid.appendChild(cell);
+      return;
+    }
+    const dateStr = ymdLocal(date);
+    const items = byDate[dateStr] || [];
+    cell.className = "cal-cell";
+    if (dateStr === todayStr) cell.classList.add("today");
+    if (state.selectedDate === dateStr) cell.classList.add("selected");
+
+    const dayNum = document.createElement("div");
+    dayNum.className = "daynum";
+    dayNum.textContent = date.getDate();
+    cell.appendChild(dayNum);
+
+    const holidayName = KR_HOLIDAYS[dateStr];
+    if (holidayName) {
+      cell.classList.add("holiday");
+      const hLabel = document.createElement("span");
+      hLabel.className = "holiday-label";
+      hLabel.textContent = holidayName;
+      hLabel.title = holidayName;
+      cell.appendChild(hLabel);
+    }
+
+    const dayEvents = state.events[dateStr] || [];
+    if (dayEvents.length > 0) {
+      const evWrap = document.createElement("div");
+      evWrap.className = "event-tags";
+      dayEvents.slice(0, 2).forEach(ev => {
+        const tag = document.createElement("span");
+        tag.className = `event-tag event-${ev.type}`;
+        tag.textContent = ev.type === "exam" ? "시험" : ev.type === "cancel" ? "휴강" : "메모";
+        evWrap.appendChild(tag);
+      });
+      cell.appendChild(evWrap);
+    }
+
+    const dotsWrap = document.createElement("div");
+    dotsWrap.className = "cal-dots";
+    let hasAbsent = false, hasPartial = false, hasPresent = false, hasUnmarked = false;
+    items.slice(0, 4).forEach(item => {
+      const rec = getRecord(item.courseId, item.weekIndex, item.session.id);
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      if (rec?.status === "absent") { dot.style.background = "#ef4444"; hasAbsent = true; }
+      else if (rec?.status === "partial") { dot.style.background = "#f59e0b"; hasPartial = true; }
+      else if (rec?.status === "present") { dot.style.background = "#22c55e"; hasPresent = true; }
+      else { dot.style.background = DAY_DOT_COLORS[item.session.dayOfWeek]; hasUnmarked = true; }
+      dotsWrap.appendChild(dot);
+    });
+    cell.appendChild(dotsWrap);
+
+    if (items.length > 0) {
+      const label = document.createElement("span");
+      label.className = "status-label";
+      if (hasAbsent) {
+        label.textContent = "결석";
+        label.style.color = "#f87171";
+      } else if (hasPartial) {
+        label.textContent = "부분결석";
+        label.style.color = "#f59e0b";
+      } else if (hasPresent && !hasUnmarked) {
+        label.textContent = "출석";
+        label.style.color = "#4ade80";
+      } else if (hasUnmarked) {
+        label.textContent = "미체크";
+        label.style.color = "#66666f";
+      }
+      cell.appendChild(label);
+    }
+
+    if (items.length > 0 && !hasAbsent && !hasPartial && hasPresent && !hasUnmarked) {
+      cell.classList.add("attended");
+    }
+
+    cell.onclick = () => {
+      state.selectedDate = dateStr;
+      switchTab("day");
+      renderCalendar();
+      renderDayPanel();
+    };
+
+    grid.appendChild(cell);
+  });
+}
+
+function renderCourseList() {
+  const list = document.getElementById("course-list");
+  list.innerHTML = "";
+  if (state.courses.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-note";
+    p.textContent = "등록된 수업이 없어요.";
+    list.appendChild(p);
+    return;
+  }
+  state.courses.forEach(c => {
+    const item = document.createElement("div");
+    item.className = "course-item";
+
+    const top = document.createElement("div");
+    top.className = "course-item-top";
+
+    const name = document.createElement("div");
+    name.className = "course-item-name";
+    name.textContent = c.name;
+    top.appendChild(name);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn";
+    delBtn.textContent = "🗑";
+    delBtn.title = "수업 전체 삭제";
+    delBtn.onclick = () => {
+      if (confirm(`"${c.name}" 수업을 완전히 삭제할까요? 모든 요일과 출석 기록이 사라집니다.`)) {
+        deleteCourseWhole(c.id);
+      }
+    };
+    top.appendChild(delBtn);
+
+    item.appendChild(top);
+
+    const tags = document.createElement("div");
+    tags.className = "session-tags";
+    c.sessions.forEach(s => {
+      const tag = document.createElement("span");
+      tag.className = "session-tag";
+      tag.textContent = `${DAY_NAMES[s.dayOfWeek]} ${s.hours}h`;
+      tags.appendChild(tag);
+    });
+    item.appendChild(tags);
+
+    const limits = getCourseLimits(c);
+    const limitNote = document.createElement("div");
+    limitNote.style.fontSize = "10px";
+    limitNote.style.color = "var(--text-faint)";
+    limitNote.style.marginTop = "6px";
+    limitNote.textContent = `주당 ${formatHours(limits.weeklyHours)}h · 총 ${formatHours(limits.totalHours)}h · 결석 한도 ${formatHours(limits.limit)}h (F 기준)`;
+    item.appendChild(limitNote);
+
+    list.appendChild(item);
+  });
+}
+
+function renderStats() {
+  const list = document.getElementById("stats-list");
+  list.innerHTML = "";
+  const stats = computeStats();
+  if (state.courses.length === 0) {
+    document.getElementById("stats-section").classList.add("hidden");
+    return;
+  }
+  document.getElementById("stats-section").classList.remove("hidden");
+  state.courses.forEach(c => {
+    const s = stats[c.id];
+    const row = document.createElement("div");
+    row.className = "stats-row";
+    row.style.flexDirection = "column";
+    row.style.alignItems = "stretch";
+    row.style.gap = "3px";
+
+    const topLine = document.createElement("div");
+    topLine.style.display = "flex";
+    topLine.style.justifyContent = "space-between";
+    topLine.style.alignItems = "center";
+    topLine.style.gap = "8px";
+
+    const labelWrap = document.createElement("span");
+    labelWrap.style.display = "flex";
+    labelWrap.style.alignItems = "center";
+    labelWrap.style.gap = "6px";
+    labelWrap.style.minWidth = "0";
+    labelWrap.style.flex = "1 1 auto";
+
+    const light = document.createElement("span");
+    light.className = "traffic-light";
+    const lightColor = { safe: "#3a3a44", warn: "var(--amber)", danger: "var(--red)", over: "var(--red)" }[s.level];
+    light.style.background = lightColor;
+    if (s.level === "danger" || s.level === "over") light.classList.add("blink");
+    labelWrap.appendChild(light);
+
+    const label = document.createElement("span");
+    label.textContent = c.name;
+    label.style.color = "#c5c5cc";
+    label.style.overflow = "hidden";
+    label.style.textOverflow = "ellipsis";
+    label.style.whiteSpace = "nowrap";
+    labelWrap.appendChild(label);
+
+    // 결석시간 / F 한도시간 으로 표시 (전체 수업시간이 아니라 "몇 시간 남았는지" 바로 알 수 있도록)
+    const val = document.createElement("span");
+    val.textContent = `${formatHours(s.absentHours)}h / ${formatHours(s.limit)}h`;
+    val.style.color = s.level === "safe" ? "#66666f" : lightColor;
+    val.style.fontWeight = s.level === "safe" ? "normal" : "600";
+    val.style.flexShrink = "0";
+    val.style.whiteSpace = "nowrap";
+
+    topLine.appendChild(labelWrap);
+    topLine.appendChild(val);
+    row.appendChild(topLine);
+
+    const sub = document.createElement("div");
+    if (s.level === "over") {
+      sub.style.fontSize = "10px";
+      sub.style.color = "#fca5a5";
+      sub.style.paddingLeft = "16px";
+      sub.textContent = `⚠ F 처리 기준(결석 한도 ${formatHours(s.limit)}h) 초과!`;
+      row.appendChild(sub);
+    }
+
+    list.appendChild(row);
+  });
+}
+
+const EVENT_TYPE_LABELS = { exam: "시험", cancel: "휴강", note: "메모" };
+
+function renderEventSection(container, dateStr) {
+  const section = document.createElement("div");
+  section.className = "event-section";
+  section.style.marginBottom = "16px";
+  section.style.padding = "12px";
+  section.style.background = "var(--panel2)";
+  section.style.border = "1px solid var(--border)";
+  section.style.borderRadius = "10px";
+
+  const title = document.createElement("h4");
+  title.textContent = "🗓 일정 등록 (시험 · 휴강 · 메모)";
+  title.style.fontSize = "11px";
+  title.style.color = "var(--text-dim)";
+  title.style.fontWeight = "700";
+  title.style.letterSpacing = "0.02em";
+  title.style.margin = "0 0 10px";
+  section.appendChild(title);
+
+  const events = state.events[dateStr] || [];
+  if (events.length > 0) {
+    const list = document.createElement("div");
+    list.style.marginBottom = "10px";
+    list.style.display = "flex";
+    list.style.flexDirection = "column";
+    list.style.gap = "6px";
+    events.forEach(ev => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "6px";
+      row.style.background = "var(--panel2)";
+      row.style.borderRadius = "8px";
+      row.style.padding = "6px 8px";
+
+      const tag = document.createElement("span");
+      tag.className = `event-tag event-${ev.type}`;
+      tag.style.flexShrink = "0";
+      tag.textContent = EVENT_TYPE_LABELS[ev.type] || "메모";
+      row.appendChild(tag);
+
+      const txt = document.createElement("span");
+      txt.style.fontSize = "12px";
+      txt.style.flex = "1";
+      txt.style.overflow = "hidden";
+      txt.style.textOverflow = "ellipsis";
+      txt.style.whiteSpace = "nowrap";
+      txt.textContent = ev.text || "";
+      row.appendChild(txt);
+
+      const del = document.createElement("button");
+      del.className = "icon-btn";
+      del.textContent = "✕";
+      del.title = "일정 삭제";
+      del.onclick = () => {
+        state.events[dateStr] = (state.events[dateStr] || []).filter(e => e.id !== ev.id);
+        if (state.events[dateStr].length === 0) delete state.events[dateStr];
+        persist();
+        renderAll();
+      };
+      row.appendChild(del);
+
+      list.appendChild(row);
+    });
+    section.appendChild(list);
+  }
+
+  const form = document.createElement("div");
+  form.style.display = "flex";
+  form.style.gap = "6px";
+
+  const select = document.createElement("select");
+  select.style.flexShrink = "0";
+  select.style.width = "76px";
+  Object.entries(EVENT_TYPE_LABELS).forEach(([value, label]) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    select.appendChild(opt);
+  });
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "예: 중간고사 범위 1~5단원";
+  input.style.flex = "1";
+  input.style.minWidth = "0";
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn-primary";
+  addBtn.textContent = "등록";
+  addBtn.style.flexShrink = "0";
+
+  const submitEvent = () => {
+    if (!state.events[dateStr]) state.events[dateStr] = [];
+    state.events[dateStr].push({ id: uid(), type: select.value, text: input.value.trim() });
+    input.value = "";
+    persist();
+    renderAll();
+  };
+  addBtn.onclick = submitEvent;
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") submitEvent();
+  };
+
+  form.appendChild(select);
+  form.appendChild(input);
+  form.appendChild(addBtn);
+  section.appendChild(form);
+
+  container.appendChild(section);
+}
+
+function renderDayPanel() {
+  const content = document.getElementById("day-content");
+  content.innerHTML = "";
+
+  if (!state.selectedDate) {
+    const p = document.createElement("p");
+    p.className = "empty-note";
+    p.textContent = "달력에서 날짜를 선택해주세요.";
+    content.appendChild(p);
+    return;
+  }
+
+  const byDate = sessionsByDate();
+  const items = byDate[state.selectedDate] || [];
+  const dateObj = parseLocalDate(state.selectedDate);
+
+  const header = document.createElement("div");
+  header.style.display = "flex";
+  header.style.justifyContent = "space-between";
+  header.style.alignItems = "center";
+  header.style.marginBottom = "10px";
+  const titleEl = document.createElement("h3");
+  titleEl.style.fontSize = "14px";
+  titleEl.style.margin = "0";
+  titleEl.textContent = `${state.selectedDate} (${DAY_NAMES[dateObj.getDay()]}요일)`;
+  header.appendChild(titleEl);
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "icon-btn";
+  closeBtn.textContent = "✕";
+  closeBtn.onclick = () => {
+    state.selectedDate = null;
+    renderCalendar();
+    renderDayPanel();
+  };
+  header.appendChild(closeBtn);
+  content.appendChild(header);
+
+  const holidayName = KR_HOLIDAYS[state.selectedDate];
+  if (holidayName) {
+    const hNote = document.createElement("p");
+    hNote.style.fontSize = "12px";
+    hNote.style.color = "#f87171";
+    hNote.style.margin = "-4px 0 12px";
+    hNote.textContent = `🎌 공휴일: ${holidayName}`;
+    content.appendChild(hNote);
+  }
+
+  renderEventSection(content, state.selectedDate);
+
+  if (items.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-note";
+    p.textContent = "이 날짜에 등록된 수업이 없어요.";
+    content.appendChild(p);
+    return;
+  }
+
+  const attendanceTitle = document.createElement("h4");
+  attendanceTitle.textContent = "✅ 출석 체크";
+  attendanceTitle.style.fontSize = "11px";
+  attendanceTitle.style.color = "var(--text-dim)";
+  attendanceTitle.style.fontWeight = "700";
+  attendanceTitle.style.letterSpacing = "0.02em";
+  attendanceTitle.style.margin = "0 0 10px";
+  content.appendChild(attendanceTitle);
+
+  if (items.length > 1) {
+    const wrap = document.createElement("div");
+    wrap.className = "whole-day-actions";
+    const presentAllBtn = document.createElement("button");
+    presentAllBtn.textContent = "이 날 전체 출석";
+    presentAllBtn.onclick = () => {
+      items.forEach(item => {
+        setRecord(item.courseId, item.weekIndex, item.session.id, { status: "present", absentHours: 0 });
+      });
+      persist();
+      renderAll();
+    };
+    const absentAllBtn = document.createElement("button");
+    absentAllBtn.className = "btn-danger";
+    absentAllBtn.textContent = "이 날 전체 결석";
+    absentAllBtn.onclick = () => {
+      items.forEach(item => {
+        setRecord(item.courseId, item.weekIndex, item.session.id, { status: "absent", absentHours: item.session.hours });
+      });
+      persist();
+      renderAll();
+    };
+    wrap.appendChild(presentAllBtn);
+    wrap.appendChild(absentAllBtn);
+    content.appendChild(wrap);
+  }
+
+  items.forEach(item => {
+    const rec = getRecord(item.courseId, item.weekIndex, item.session.id);
+    const status = rec ? rec.status : "unmarked";
+
+    const card = document.createElement("div");
+    card.className = "day-course-card";
+
+    const top = document.createElement("div");
+    top.className = "day-course-top";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = item.courseName;
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = `${item.session.hours}시간 · ${item.weekIndex + 1}주차`;
+    top.appendChild(name);
+    top.appendChild(meta);
+    card.appendChild(top);
+
+    const statusLabel = document.createElement("div");
+    statusLabel.style.fontSize = "11px";
+    statusLabel.style.marginBottom = "6px";
+    const statusInfo = {
+      present: { text: "● 출석 처리됨", color: "#4ade80" },
+      absent: { text: "● 결석 처리됨", color: "#f87171" },
+      partial: { text: `● 부분결석 (${rec ? rec.absentHours : 0}h)`, color: "#f59e0b" },
+      unmarked: { text: "○ 아직 체크 안 함", color: "#66666f" }
+    }[status];
+    statusLabel.textContent = statusInfo.text;
+    statusLabel.style.color = statusInfo.color;
+    card.appendChild(statusLabel);
+
+    const btnRow = document.createElement("div");
+    btnRow.className = "status-btn-row";
+
+    const presentBtn = document.createElement("button");
+    presentBtn.className = "status-btn" + (status === "present" ? " present-active" : "");
+    presentBtn.textContent = "✓ 출석";
+    presentBtn.onclick = () => {
+      setRecord(item.courseId, item.weekIndex, item.session.id, { status: "present", absentHours: 0 });
+      persist();
+      renderAll();
+    };
+
+    const absentBtn = document.createElement("button");
+    absentBtn.className = "status-btn" + (status === "absent" ? " absent-active" : "");
+    absentBtn.textContent = "전체 결석";
+    absentBtn.onclick = () => {
+      setRecord(item.courseId, item.weekIndex, item.session.id, { status: "absent", absentHours: item.session.hours });
+      persist();
+      renderAll();
+    };
+
+    btnRow.appendChild(presentBtn);
+    btnRow.appendChild(absentBtn);
+    card.appendChild(btnRow);
+
+    if (item.session.hours > 1) {
+      const label = document.createElement("label");
+      label.className = "partial-input-label";
+      label.textContent = `일부만 빠졌다면 시간 입력 (0 ~ ${item.session.hours})`;
+      card.appendChild(label);
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.max = String(item.session.hours);
+      input.step = "0.5";
+      input.style.width = "100%";
+      input.value = status === "present" ? 0 : (rec?.absentHours || 0);
+      input.onchange = () => {
+        let h = Math.max(0, Math.min(item.session.hours, Number(input.value)));
+        if (h <= 0) {
+          setRecord(item.courseId, item.weekIndex, item.session.id, { status: "present", absentHours: 0 });
+        } else if (h >= item.session.hours) {
+          setRecord(item.courseId, item.weekIndex, item.session.id, { status: "absent", absentHours: h });
+        } else {
+          setRecord(item.courseId, item.weekIndex, item.session.id, { status: "partial", absentHours: h });
+        }
+        persist();
+        renderAll();
+      };
+      card.appendChild(input);
+
+      if (status === "partial") {
+        const hint = document.createElement("p");
+        hint.className = "partial-hint";
+        hint.textContent = `${rec.absentHours}시간 결석 처리됨`;
+        card.appendChild(hint);
+      }
+    }
+
+    const delRow = document.createElement("div");
+    delRow.className = "delete-row";
+
+    const delDayBtn = document.createElement("button");
+    delDayBtn.textContent = "이 날 기록만 삭제";
+    delDayBtn.onclick = () => {
+      deleteCourseSingleDay(item.courseId, item.weekIndex, item.session.id);
+    };
+
+    const delAllBtn = document.createElement("button");
+    delAllBtn.className = "btn-danger";
+    delAllBtn.textContent = "이 수업 전체 삭제";
+    delAllBtn.onclick = () => {
+      if (confirm(`"${item.courseName}" 수업을 완전히 삭제할까요? 모든 요일과 출석 기록이 사라집니다.`)) {
+        deleteCourseWhole(item.courseId);
+      }
+    };
+
+    delRow.appendChild(delDayBtn);
+    delRow.appendChild(delAllBtn);
+    card.appendChild(delRow);
+
+    content.appendChild(card);
+  });
+}
+
+renderDayPicker();
+</script>
+</body>
+</html>
