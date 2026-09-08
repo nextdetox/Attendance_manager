@@ -30,18 +30,18 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
     min-height: 100vh;
   }
-  button, input, select {
+  button, input, select, textarea {
     font-family: inherit;
     font-size: 14px;
   }
-  input, select {
+  input, select, textarea {
     background: var(--panel2);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 8px;
     padding: 8px 10px;
   }
-  input:focus, select:focus {
+  input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--blue);
   }
@@ -473,18 +473,46 @@
         </div>
 
         <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:4px;">
+          <h3 style="font-size:13px; margin:0 0 6px;">🔗 시간표 붙여넣기로 빠르게 등록</h3>
+          <p style="font-size:11px; color:var(--text-faint); margin:0 0 10px; line-height:1.6;">
+            ! 시간표 링크로 일정이 일괄 등록되는 기능은 구현중입니다.<br/>
+            요일을 고르고 그 요일 수업을 <b>"과목명 시작~종료"</b> 형식으로 한 줄에 하나씩 붙여넣으면 자동으로 인식해서 목록에 추가돼요.<br/>
+            예) <code>자료구조 09:00~10:15</code>
+          </p>
+          <div class="field">
+            <label>요일</label>
+            <select id="import-day-select"></select>
+          </div>
+          <div class="field">
+            <label>수업 목록 (한 줄에 하나씩)</label>
+            <textarea id="import-textarea" rows="4" style="width:100%; resize:vertical;" placeholder="자료구조 09:00~10:15&#10;알고리즘 10:30~11:45"></textarea>
+          </div>
+          <button id="import-parse-btn" style="width:100%;">+ 이 요일 수업 인식해서 목록에 추가</button>
+          <div id="import-preview" style="margin-top:10px;"></div>
+          <button class="btn-primary hidden" id="import-confirm-btn" style="width:100%; margin-top:10px;">인식된 항목 전부 등록</button>
+          <details style="margin-top:10px;">
+            <summary style="font-size:11px; color:var(--text-faint); cursor:pointer;">왜 링크만으로는 자동으로 못 불러오나요?</summary>
+            <p style="font-size:11px; color:var(--text-faint); margin:6px 0 0; line-height:1.6;">
+              이 앱은 별도 서버 없이 브라우저에서만 동작해요. 브라우저는 보안 정책(CORS) 때문에 다른 사이트(에브리타임, 학교 포털 등)의 페이지 내용을 직접 가져올 수 없고,
+              특히 로그인이 필요한 페이지는 더더욱 불가능해요. 그래서 화면에 보이는 시간표 내용을 직접 복사해서 붙여넣는 방식으로 대신했어요.
+            </p>
+          </details>
+        </div>
+
+        <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:16px;">
           <h3 style="font-size:13px; margin:0 0 10px;">새 수업 등록</h3>
           <div class="field">
             <label>수업 이름</label>
             <input id="new-course-name" type="text" placeholder="예: 자료구조" />
+            <p style="font-size:10px; color:var(--text-faint); margin:4px 0 0;">같은 이름의 수업이 이미 있으면 새로 만들지 않고 요일이 합쳐져요.</p>
           </div>
           <div class="field">
             <label>요일 선택 (여러 개 가능)</label>
             <div class="day-picker" id="day-picker"></div>
           </div>
-          <div class="field">
-            <label>주당 수업 시간 (선택한 각 요일마다 적용)</label>
-            <input id="new-course-hours" type="number" min="0.5" step="0.5" value="1" />
+          <div class="field hidden" id="day-hours-field">
+            <label>요일별 주당 수업 시간</label>
+            <div id="day-hours-list"></div>
           </div>
           <div class="error-text hidden" id="course-error"></div>
           <button class="btn-primary" id="add-course-btn" style="width:100%">+ 수업 등록</button>
@@ -696,7 +724,9 @@ let state = {
   viewDate: new Date(),
   selectedDate: null,
   rightTab: "register",
-  newCourseDays: []
+  newCourseDays: [],
+  newCourseDayHours: {}, // { [dayOfWeek]: hours } 요일별로 다른 시간 지정 가능
+  importPending: [] // 시간표 붙여넣기 기능에서 아직 등록 확정 전인 임시 목록 (저장 안 됨)
 };
 
 let saveTimer = null;
@@ -902,14 +932,20 @@ onAuthStateChanged(auth, (user) => {
 
 // ---------- day picker (for new course) ----------
 const dayPicker = document.getElementById("day-picker");
+const dayHoursList = document.getElementById("day-hours-list");
 DAY_NAMES.forEach((name, i) => {
   const btn = document.createElement("button");
   btn.textContent = name;
   btn.type = "button";
   btn.onclick = () => {
     const idx = state.newCourseDays.indexOf(i);
-    if (idx >= 0) state.newCourseDays.splice(idx, 1);
-    else state.newCourseDays.push(i);
+    if (idx >= 0) {
+      state.newCourseDays.splice(idx, 1);
+      delete state.newCourseDayHours[i];
+    } else {
+      state.newCourseDays.push(i);
+      if (!(i in state.newCourseDayHours)) state.newCourseDayHours[i] = 1;
+    }
     renderDayPicker();
   };
   btn.dataset.day = i;
@@ -919,12 +955,199 @@ function renderDayPicker() {
   [...dayPicker.children].forEach((btn, i) => {
     btn.classList.toggle("selected", state.newCourseDays.includes(i));
   });
+  renderDayHoursList();
 }
+
+// 선택된 요일마다 개별 시간 입력칸을 보여줌 (예: 월 2시간, 수 1시간처럼 요일별로 다르게 지정 가능)
+function renderDayHoursList() {
+  dayHoursList.innerHTML = "";
+  const field = document.getElementById("day-hours-field");
+  if (state.newCourseDays.length === 0) {
+    field.classList.add("hidden");
+    return;
+  }
+  field.classList.remove("hidden");
+
+  const sortedDays = [...state.newCourseDays].sort((a, b) => a - b);
+  sortedDays.forEach(day => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.gap = "8px";
+    row.style.marginBottom = "6px";
+
+    const label = document.createElement("span");
+    label.textContent = `${DAY_NAMES[day]}요일`;
+    label.style.width = "48px";
+    label.style.flexShrink = "0";
+    label.style.fontSize = "13px";
+    label.style.color = "#c5c5cc";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0.5";
+    input.step = "0.5";
+    input.value = state.newCourseDayHours[day] ?? 1;
+    input.style.flex = "1";
+    input.onchange = () => {
+      state.newCourseDayHours[day] = Math.max(0.5, Number(input.value) || 1);
+    };
+
+    const unit = document.createElement("span");
+    unit.textContent = "시간";
+    unit.style.fontSize = "12px";
+    unit.style.color = "var(--text-faint)";
+    unit.style.flexShrink = "0";
+
+    row.appendChild(label);
+    row.appendChild(input);
+    row.appendChild(unit);
+    dayHoursList.appendChild(row);
+  });
+}
+
+// ---------- 시간표 붙여넣기로 가져오기 ----------
+const importDaySelect = document.getElementById("import-day-select");
+DAY_NAMES.forEach((name, i) => {
+  const opt = document.createElement("option");
+  opt.value = String(i);
+  opt.textContent = `${name}요일`;
+  if (i === 1) opt.selected = true; // 기본값: 월요일
+  importDaySelect.appendChild(opt);
+});
+
+// "과목명 09:00~10:15" 같은 한 줄을 { name, hours }로 변환. 시간을 못 찾으면 null 반환.
+function parseTimetableLine(line) {
+  const m = line.match(/(\d{1,2}):(\d{2})\s*[~\-–—]\s*(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const startH = Number(m[1]) + Number(m[2]) / 60;
+  const endH = Number(m[3]) + Number(m[4]) / 60;
+  let hours = endH - startH;
+  if (!(hours > 0)) return null;
+  hours = Math.round(hours * 100) / 100;
+  const name = line.replace(m[0], "")
+    .replace(/[()（）\[\]]/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim() || "이름 없음";
+  return { name, hours };
+}
+
+document.getElementById("import-parse-btn").onclick = () => {
+  const day = Number(importDaySelect.value);
+  const textarea = document.getElementById("import-textarea");
+  const lines = textarea.value.split("\n").map(l => l.trim()).filter(Boolean);
+
+  lines.forEach(line => {
+    const parsed = parseTimetableLine(line);
+    if (parsed) {
+      state.importPending.push({ id: uid(), day, name: parsed.name, hours: parsed.hours });
+    } else {
+      // 시간 형식을 못 찾았으면 이름만이라도 넣고 시간은 기본값 1로, 미리보기에서 직접 고치도록 안내
+      state.importPending.push({ id: uid(), day, name: line, hours: 1 });
+    }
+  });
+
+  textarea.value = "";
+  renderImportPreview();
+};
+
+function renderImportPreview() {
+  const container = document.getElementById("import-preview");
+  const confirmBtn = document.getElementById("import-confirm-btn");
+  container.innerHTML = "";
+
+  if (state.importPending.length === 0) {
+    confirmBtn.classList.add("hidden");
+    return;
+  }
+  confirmBtn.classList.remove("hidden");
+
+  const hint = document.createElement("p");
+  hint.style.fontSize = "10px";
+  hint.style.color = "var(--text-faint)";
+  hint.style.margin = "0 0 6px";
+  hint.textContent = "인식된 항목이에요. 잘못됐으면 아래에서 직접 고친 뒤 등록해주세요.";
+  container.appendChild(hint);
+
+  state.importPending.forEach(item => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "6px";
+    row.style.marginBottom = "6px";
+    row.style.alignItems = "center";
+
+    const daySel = document.createElement("select");
+    daySel.style.width = "58px";
+    daySel.style.flexShrink = "0";
+    daySel.style.padding = "6px 4px";
+    DAY_NAMES.forEach((n, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = n;
+      if (i === item.day) opt.selected = true;
+      daySel.appendChild(opt);
+    });
+    daySel.onchange = () => { item.day = Number(daySel.value); };
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = item.name;
+    nameInput.style.flex = "1";
+    nameInput.style.minWidth = "0";
+    nameInput.style.padding = "6px 8px";
+    nameInput.onchange = () => { item.name = nameInput.value.trim() || "이름 없음"; };
+
+    const hoursInput = document.createElement("input");
+    hoursInput.type = "number";
+    hoursInput.min = "0.5";
+    hoursInput.step = "0.5";
+    hoursInput.value = item.hours;
+    hoursInput.style.width = "56px";
+    hoursInput.style.flexShrink = "0";
+    hoursInput.style.padding = "6px 4px";
+    hoursInput.onchange = () => { item.hours = Math.max(0.5, Number(hoursInput.value) || 1); };
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn";
+    delBtn.textContent = "✕";
+    delBtn.title = "이 항목 제외";
+    delBtn.onclick = () => {
+      state.importPending = state.importPending.filter(p => p.id !== item.id);
+      renderImportPreview();
+    };
+
+    row.appendChild(daySel);
+    row.appendChild(nameInput);
+    row.appendChild(hoursInput);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
+
+document.getElementById("import-confirm-btn").onclick = () => {
+  state.importPending.forEach(item => {
+    // 같은 이름의 수업이 이미 있으면 거기에 요일만 추가, 없으면 새 수업 생성
+    let course = state.courses.find(c => c.name === item.name);
+    if (!course) {
+      course = { id: uid(), name: item.name, sessions: [] };
+      state.courses.push(course);
+    }
+    const existingSession = course.sessions.find(s => s.dayOfWeek === item.day);
+    if (existingSession) {
+      existingSession.hours = item.hours; // 같은 요일이 이미 있으면 새 값으로 갱신
+    } else {
+      course.sessions.push({ id: uid(), dayOfWeek: item.day, hours: item.hours });
+    }
+  });
+  state.importPending = [];
+  renderImportPreview();
+  persist();
+  renderAll();
+};
 
 // ---------- add course ----------
 document.getElementById("add-course-btn").onclick = () => {
   const name = document.getElementById("new-course-name").value.trim();
-  const hours = Number(document.getElementById("new-course-hours").value);
   const errEl = document.getElementById("course-error");
   errEl.classList.add("hidden");
 
@@ -938,18 +1161,32 @@ document.getElementById("add-course-btn").onclick = () => {
     errEl.classList.remove("hidden");
     return;
   }
-  if (!hours || hours <= 0) {
-    errEl.textContent = "시간을 올바르게 입력해주세요";
+  const invalidDay = state.newCourseDays.find(d => !(state.newCourseDayHours[d] > 0));
+  if (invalidDay !== undefined) {
+    errEl.textContent = "요일별 시간을 올바르게 입력해주세요";
     errEl.classList.remove("hidden");
     return;
   }
 
-  const sessions = state.newCourseDays.map(d => ({ id: uid(), dayOfWeek: d, hours }));
-  state.courses.push({ id: uid(), name, sessions });
+  // 같은 이름의 수업이 이미 있으면 새로 만들지 않고 거기에 요일을 합쳐줌
+  let course = state.courses.find(c => c.name === name);
+  if (!course) {
+    course = { id: uid(), name, sessions: [] };
+    state.courses.push(course);
+  }
+  state.newCourseDays.forEach(d => {
+    const hours = state.newCourseDayHours[d];
+    const existingSession = course.sessions.find(s => s.dayOfWeek === d);
+    if (existingSession) {
+      existingSession.hours = hours; // 같은 요일에 이미 시간이 있으면 새로 입력한 값으로 갱신
+    } else {
+      course.sessions.push({ id: uid(), dayOfWeek: d, hours });
+    }
+  });
 
   document.getElementById("new-course-name").value = "";
-  document.getElementById("new-course-hours").value = "1";
   state.newCourseDays = [];
+  state.newCourseDayHours = {};
   renderDayPicker();
   persist();
   renderAll();
