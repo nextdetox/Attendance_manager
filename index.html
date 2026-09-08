@@ -384,6 +384,62 @@
 
   .empty-note { color: var(--text-faint); font-size: 13px; text-align: center; padding: 20px 0; }
 
+  /* 주간 시간표 */
+  .week-grid-header {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+  }
+  .week-grid-header .week-axis-spacer { width: 40px; flex-shrink: 0; }
+  .week-grid-header .week-day-label {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .week-grid-body { display: flex; position: relative; }
+  .week-time-axis { width: 40px; flex-shrink: 0; position: relative; }
+  .week-time-label {
+    position: absolute;
+    left: 0;
+    right: 4px;
+    text-align: right;
+    font-size: 10px;
+    color: var(--text-faint);
+    transform: translateY(-6px);
+  }
+  .week-day-col {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    border-left: 1px solid var(--border);
+  }
+  .week-block {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border-radius: 6px;
+    padding: 4px 5px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .week-block-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .week-block-time {
+    font-size: 9px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+
   .whole-day-actions { display: flex; gap: 8px; margin-bottom: 12px; }
   .whole-day-actions button { flex: 1; font-size: 12px; }
 </style>
@@ -457,7 +513,12 @@
     <div class="panel">
       <div class="tabs">
         <button id="tab-register" class="active">수업 등록</button>
+        <button id="tab-week">주간 시간표</button>
         <button id="tab-day">선택한 날짜</button>
+      </div>
+
+      <div id="panel-week" class="hidden">
+        <div id="week-timetable"></div>
       </div>
 
       <div id="panel-register">
@@ -473,31 +534,33 @@
         </div>
 
         <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:4px;">
-          <h3 style="font-size:13px; margin:0 0 6px;">🔗 시간표 붙여넣기로 빠르게 등록</h3>
-          <p style="font-size:11px; color:var(--text-faint); margin:0 0 10px; line-height:1.6;">
-            ! 시간표 링크로 일정이 일괄 등록되는 기능은 구현중입니다.<br/>
-            요일을 고르고 그 요일 수업을 <b>"과목명 시작~종료"</b> 형식으로 한 줄에 하나씩 붙여넣으면 자동으로 인식해서 목록에 추가돼요.<br/>
-            예) <code>자료구조 09:00~10:15</code>
-          </p>
-          <div class="field">
-            <label>요일</label>
-            <select id="import-day-select"></select>
-          </div>
-          <div class="field">
-            <label>수업 목록 (한 줄에 하나씩)</label>
-            <textarea id="import-textarea" rows="4" style="width:100%; resize:vertical;" placeholder="자료구조 09:00~10:15&#10;알고리즘 10:30~11:45"></textarea>
-          </div>
-          <button id="import-parse-btn" style="width:100%;">+ 이 요일 수업 인식해서 목록에 추가</button>
-          <div id="import-preview" style="margin-top:10px;"></div>
-          <button class="btn-primary hidden" id="import-confirm-btn" style="width:100%; margin-top:10px;">인식된 항목 전부 등록</button>
-          <details style="margin-top:10px;">
-            <summary style="font-size:11px; color:var(--text-faint); cursor:pointer;">왜 링크만으로는 자동으로 못 불러오나요?</summary>
-            <p style="font-size:11px; color:var(--text-faint); margin:6px 0 0; line-height:1.6;">
-              이 앱은 별도 서버 없이 브라우저에서만 동작해요. 브라우저는 보안 정책(CORS) 때문에 다른 사이트(에브리타임, 학교 포털 등)의 페이지 내용을 직접 가져올 수 없고,
-              특히 로그인이 필요한 페이지는 더더욱 불가능해요. 그래서 화면에 보이는 시간표 내용을 직접 복사해서 붙여넣는 방식으로 대신했어요.
-            </p>
-          </details>
-        </div>
+
+  <h3 style="font-size:13px; margin:0 0 10px;">
+    🔗 에브리타임 자동 등록
+  </h3>
+
+  <div class="field">
+    <label>에브리타임 공유 링크</label>
+    <input
+      id="everytime-link"
+      type="text"
+      placeholder="에브리타임 시간표 공유링크">
+  </div>
+
+  <button id="everytime-import-btn" class="btn-primary" style="width:100%;">
+    시간표 불러오기
+  </button>
+
+  <div id="import-preview" style="margin-top:10px;"></div>
+
+  <button
+    class="btn-primary hidden"
+    id="import-confirm-btn"
+    style="width:100%; margin-top:10px;">
+    인식된 항목 전부 등록
+  </button>
+
+</div>
 
         <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:16px;">
           <h3 style="font-size:13px; margin:0 0 10px;">새 수업 등록</h3>
@@ -511,7 +574,7 @@
             <div class="day-picker" id="day-picker"></div>
           </div>
           <div class="field hidden" id="day-hours-field">
-            <label>요일별 주당 수업 시간</label>
+            <label>요일별 시작 시간(선택) · 주당 수업 시간</label>
             <div id="day-hours-list"></div>
           </div>
           <div class="error-text hidden" id="course-error"></div>
@@ -629,7 +692,17 @@ const KR_HOLIDAYS = {
 const ABSENCE_LIMIT_FRACTION = 1 / 3; // 총 수업시간 대비 결석 한도 비율
 const ABSENCE_WARN_YELLOW_RATIO = 1 / 2; // 한도 대비 노랑불 시작 비율
 const ABSENCE_WARN_RED_RATIO = 2 / 3;    // 한도 대비 빨강불 시작 비율
-const DAY_DOT_COLORS = ["#f87171","#fb923c","#fbbf24","#4ade80","#60a5fa","#818cf8","#c084fc"];
+
+// 주간 시간표에서 수업마다 구분되는 파스텔 색상 (에브리타임 스타일 참고)
+const TIMETABLE_PALETTE = [
+  { bg: "rgba(248,113,113,0.16)", border: "#f87171" },
+  { bg: "rgba(96,165,250,0.16)",  border: "#60a5fa" },
+  { bg: "rgba(74,222,128,0.16)",  border: "#4ade80" },
+  { bg: "rgba(251,191,36,0.16)",  border: "#fbbf24" },
+  { bg: "rgba(192,132,252,0.16)", border: "#c084fc" },
+  { bg: "rgba(45,212,191,0.16)",  border: "#2dd4bf" },
+  { bg: "rgba(251,146,60,0.16)",  border: "#fb923c" }
+];
 
 // 수업 하나의 "주당 총 시간" (같은 수업이 여러 요일에 걸쳐 있으면 합산)
 function getCourseWeeklyHours(course) {
@@ -726,6 +799,7 @@ let state = {
   rightTab: "register",
   newCourseDays: [],
   newCourseDayHours: {}, // { [dayOfWeek]: hours } 요일별로 다른 시간 지정 가능
+  newCourseDayStart: {}, // { [dayOfWeek]: "HH:MM" } 선택 입력, 넣으면 주간 시간표에 위치가 표시됨
   importPending: [] // 시간표 붙여넣기 기능에서 아직 등록 확정 전인 임시 목록 (저장 안 됨)
 };
 
@@ -942,6 +1016,7 @@ DAY_NAMES.forEach((name, i) => {
     if (idx >= 0) {
       state.newCourseDays.splice(idx, 1);
       delete state.newCourseDayHours[i];
+      delete state.newCourseDayStart[i];
     } else {
       state.newCourseDays.push(i);
       if (!(i in state.newCourseDayHours)) state.newCourseDayHours[i] = 1;
@@ -973,15 +1048,23 @@ function renderDayHoursList() {
     const row = document.createElement("div");
     row.style.display = "flex";
     row.style.alignItems = "center";
-    row.style.gap = "8px";
+    row.style.gap = "6px";
     row.style.marginBottom = "6px";
 
     const label = document.createElement("span");
     label.textContent = `${DAY_NAMES[day]}요일`;
-    label.style.width = "48px";
+    label.style.width = "40px";
     label.style.flexShrink = "0";
     label.style.fontSize = "13px";
     label.style.color = "#c5c5cc";
+
+    const startInput = document.createElement("input");
+    startInput.type = "time";
+    startInput.value = state.newCourseDayStart[day] ?? "";
+    startInput.style.width = "92px";
+    startInput.style.flexShrink = "0";
+    startInput.title = "시작 시간 (선택, 입력하면 주간 시간표에 표시됨)";
+    startInput.onchange = () => { state.newCourseDayStart[day] = startInput.value; };
 
     const input = document.createElement("input");
     input.type = "number";
@@ -989,6 +1072,7 @@ function renderDayHoursList() {
     input.step = "0.5";
     input.value = state.newCourseDayHours[day] ?? 1;
     input.style.flex = "1";
+    input.style.minWidth = "0";
     input.onchange = () => {
       state.newCourseDayHours[day] = Math.max(0.5, Number(input.value) || 1);
     };
@@ -1000,6 +1084,7 @@ function renderDayHoursList() {
     unit.style.flexShrink = "0";
 
     row.appendChild(label);
+    row.appendChild(startInput);
     row.appendChild(input);
     row.appendChild(unit);
     dayHoursList.appendChild(row);
@@ -1007,14 +1092,70 @@ function renderDayHoursList() {
 }
 
 // ---------- 시간표 붙여넣기로 가져오기 ----------
+
+const WORKER_URL = "https://attendance-worker.kane1214.workers.dev/";
+
+function extractEverytimeId(url){
+    const m=url.match(/@([A-Za-z0-9]+)/);
+    return m?m[1]:null;
+}
+
+function minutesToTime(v){
+
+    const hour = v / 12;
+    return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function parseEverytimeXML(xml){
+
+    const doc = new DOMParser().parseFromString(xml,"text/xml");
+    const grouped = {};
+
+    doc.querySelectorAll("subject").forEach(subjectNode=>{
+
+        const subject =
+            subjectNode.querySelector("name")?.getAttribute("value") || "이름 없음";
+
+        const professor =
+            subjectNode.querySelector("professor")?.getAttribute("value") || "";
+
+        subjectNode.querySelectorAll("data").forEach(dataNode=>{
+
+            const day = Number(dataNode.getAttribute("day")) + 1;
+            const start = Number(dataNode.getAttribute("starttime"));
+            const end = Number(dataNode.getAttribute("endtime"));
+
+            const duration = (end-start)/12;
+            const rounded = Math.max(1,Math.round(duration));
+
+            if(!grouped[subject]){
+                grouped[subject]=[];
+            }
+
+            grouped[subject].push({
+                day,
+                startTime: minutesToTime(start),
+                endTime: minutesToTime(end),
+                hours: rounded,
+                professor
+            });
+
+        });
+
+    });
+
+    return grouped;
+}
 const importDaySelect = document.getElementById("import-day-select");
-DAY_NAMES.forEach((name, i) => {
-  const opt = document.createElement("option");
-  opt.value = String(i);
-  opt.textContent = `${name}요일`;
-  if (i === 1) opt.selected = true; // 기본값: 월요일
-  importDaySelect.appendChild(opt);
-});
+if (importDaySelect) {
+  DAY_NAMES.forEach((name, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `${name}요일`;
+    if (i === 1) opt.selected = true;
+    importDaySelect.appendChild(opt);
+  });
+}
 
 // "과목명 09:00~10:15" 같은 한 줄을 { name, hours }로 변환. 시간을 못 찾으면 null 반환.
 function parseTimetableLine(line) {
@@ -1025,31 +1166,47 @@ function parseTimetableLine(line) {
   let hours = endH - startH;
   if (!(hours > 0)) return null;
   hours = Math.round(hours * 100) / 100;
+  const startTime = `${String(m[1]).padStart(2, "0")}:${m[2]}`;
   const name = line.replace(m[0], "")
     .replace(/[()（）\[\]]/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim() || "이름 없음";
-  return { name, hours };
+  return { name, hours, startTime };
 }
 
-document.getElementById("import-parse-btn").onclick = () => {
-  const day = Number(importDaySelect.value);
-  const textarea = document.getElementById("import-textarea");
-  const lines = textarea.value.split("\n").map(l => l.trim()).filter(Boolean);
+const importParseBtn = document.getElementById("import-parse-btn");
 
-  lines.forEach(line => {
-    const parsed = parseTimetableLine(line);
-    if (parsed) {
-      state.importPending.push({ id: uid(), day, name: parsed.name, hours: parsed.hours });
-    } else {
-      // 시간 형식을 못 찾았으면 이름만이라도 넣고 시간은 기본값 1로, 미리보기에서 직접 고치도록 안내
-      state.importPending.push({ id: uid(), day, name: line, hours: 1 });
-    }
-  });
+if (importParseBtn) {
+  importParseBtn.onclick = () => {
+    const day = Number(importDaySelect.value);
+    const textarea = document.getElementById("import-textarea");
+    const lines = textarea.value.split("\n").map(l => l.trim()).filter(Boolean);
 
-  textarea.value = "";
-  renderImportPreview();
-};
+    lines.forEach(line => {
+      const parsed = parseTimetableLine(line);
+
+      if (parsed) {
+        state.importPending.push({
+          id: uid(),
+          day,
+          name: parsed.name,
+          hours: parsed.hours,
+          startTime: parsed.startTime
+        });
+      } else {
+        state.importPending.push({
+          id: uid(),
+          day,
+          name: line,
+          hours: 1
+        });
+      }
+    });
+
+    textarea.value = "";
+    renderImportPreview();
+  };
+}
 
 function renderImportPreview() {
   const container = document.getElementById("import-preview");
@@ -1107,6 +1264,15 @@ function renderImportPreview() {
     hoursInput.style.padding = "6px 4px";
     hoursInput.onchange = () => { item.hours = Math.max(0.5, Number(hoursInput.value) || 1); };
 
+    const timeText = document.createElement("span");
+    timeText.style.fontSize = "10px";
+    timeText.style.color = "var(--text-faint)";
+    timeText.style.width = "40px";
+    timeText.style.flexShrink = "0";
+    timeText.textContent = item.startTime
+  ? `${item.startTime}~${item.endTime || ""}`
+  : "";
+
     const delBtn = document.createElement("button");
     delBtn.className = "icon-btn";
     delBtn.textContent = "✕";
@@ -1119,11 +1285,49 @@ function renderImportPreview() {
     row.appendChild(daySel);
     row.appendChild(nameInput);
     row.appendChild(hoursInput);
+    row.appendChild(timeText);
     row.appendChild(delBtn);
     container.appendChild(row);
   });
 }
+document.getElementById("everytime-import-btn").onclick = async () => {
 
+    const input = document.getElementById("everytime-link").value.trim();
+
+    const id = extractEverytimeId(input);
+
+    if (!id) {
+        alert("에브리타임 공유 링크를 입력해주세요.");
+        return;
+    }
+
+    try {
+        const xml = await fetch(`${WORKER_URL}?id=${id}`).then(r => r.text());
+
+        const grouped = parseEverytimeXML(xml);
+
+        state.importPending = [];
+
+        Object.entries(grouped).forEach(([name, sessions]) => {
+            sessions.forEach(session => {
+                state.importPending.push({
+                    id: uid(),
+                    name,
+                    day: session.day,
+                    hours: session.hours,
+                    startTime: session.startTime,
+                    endTime: session.endTime
+                });
+            });
+        });
+
+        renderImportPreview();
+
+    } catch (e) {
+        console.error(e);
+        alert("시간표를 가져오지 못했습니다.");
+    }
+};
 document.getElementById("import-confirm-btn").onclick = () => {
   state.importPending.forEach(item => {
     // 같은 이름의 수업이 이미 있으면 거기에 요일만 추가, 없으면 새 수업 생성
@@ -1135,12 +1339,19 @@ document.getElementById("import-confirm-btn").onclick = () => {
     const existingSession = course.sessions.find(s => s.dayOfWeek === item.day);
     if (existingSession) {
       existingSession.hours = item.hours; // 같은 요일이 이미 있으면 새 값으로 갱신
+      existingSession.startTime = item.startTime || null;
+      existingSession.endTime = item.endTime || null;
     } else {
-      course.sessions.push({ id: uid(), dayOfWeek: item.day, hours: item.hours });
+      course.sessions.push({ id: uid(),
+    dayOfWeek: item.day,
+    hours: item.hours,
+    startTime: item.startTime || null,
+    endTime: item.endTime || null });
     }
   });
   state.importPending = [];
   renderImportPreview();
+  
   persist();
   renderAll();
 };
@@ -1176,17 +1387,20 @@ document.getElementById("add-course-btn").onclick = () => {
   }
   state.newCourseDays.forEach(d => {
     const hours = state.newCourseDayHours[d];
+    const startTime = state.newCourseDayStart[d] || null;
     const existingSession = course.sessions.find(s => s.dayOfWeek === d);
     if (existingSession) {
       existingSession.hours = hours; // 같은 요일에 이미 시간이 있으면 새로 입력한 값으로 갱신
+      existingSession.startTime = startTime;
     } else {
-      course.sessions.push({ id: uid(), dayOfWeek: d, hours });
+      course.sessions.push({ id: uid(), dayOfWeek: d, hours, startTime });
     }
   });
 
   document.getElementById("new-course-name").value = "";
   state.newCourseDays = [];
   state.newCourseDayHours = {};
+  state.newCourseDayStart = {};
   renderDayPicker();
   persist();
   renderAll();
@@ -1205,13 +1419,17 @@ document.getElementById("total-weeks").onchange = (e) => {
 
 // ---------- tabs ----------
 document.getElementById("tab-register").onclick = () => switchTab("register");
+document.getElementById("tab-week").onclick = () => switchTab("week");
 document.getElementById("tab-day").onclick = () => switchTab("day");
 function switchTab(tab) {
   state.rightTab = tab;
   document.getElementById("tab-register").classList.toggle("active", tab === "register");
+  document.getElementById("tab-week").classList.toggle("active", tab === "week");
   document.getElementById("tab-day").classList.toggle("active", tab === "day");
   document.getElementById("panel-register").classList.toggle("hidden", tab !== "register");
+  document.getElementById("panel-week").classList.toggle("hidden", tab !== "week");
   document.getElementById("panel-day").classList.toggle("hidden", tab !== "day");
+  if (tab === "week") renderWeekTimetable();
 }
 
 // ---------- calendar navigation ----------
@@ -1293,6 +1511,162 @@ function renderAll() {
   renderCourseList();
   renderStats();
   if (state.rightTab === "day") renderDayPanel();
+  if (state.rightTab === "week") renderWeekTimetable();
+}
+
+function minutesToTimeStr(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// 한 주 시간표(월~금, 필요하면 토/일도) 를 시작 시간이 있는 수업들 위치에 맞춰 그려줌
+function renderWeekTimetable() {
+  const container = document.getElementById("week-timetable");
+  container.innerHTML = "";
+
+  const allSessions = [];
+  state.courses.forEach((course, idx) => {
+    course.sessions.forEach(session => {
+      allSessions.push({ course, session, colorIdx: idx });
+    });
+  });
+
+  if (allSessions.length === 0) {
+    const p = document.createElement("p");
+    p.className = "empty-note";
+    p.textContent = "등록된 수업이 없어요. '수업 등록' 탭에서 수업을 추가해보세요.";
+    container.appendChild(p);
+    return;
+  }
+
+  const hasWeekend = allSessions.some(x => x.session.dayOfWeek === 0 || x.session.dayOfWeek === 6);
+  const dayOrder = hasWeekend ? [1, 2, 3, 4, 5, 6, 0] : [1, 2, 3, 4, 5];
+
+  const timed = allSessions.filter(x => x.session.startTime);
+  const untimed = allSessions.filter(x => !x.session.startTime);
+
+  // 시간 범위 계산 (기본 09:00~18:00, 실제 수업이 그 밖이면 자동으로 넓어짐)
+  let minMinutes = 9 * 60, maxMinutes = 18 * 60;
+  timed.forEach(x => {
+    const [h, m] = x.session.startTime.split(":").map(Number);
+    const start = h * 60 + m;
+    const end = start + x.session.hours * 60;
+    minMinutes = Math.min(minMinutes, start);
+    maxMinutes = Math.max(maxMinutes, end);
+  });
+  minMinutes = Math.floor(minMinutes / 60) * 60;
+  maxMinutes = Math.ceil(maxMinutes / 60) * 60;
+
+  const pxPerHour = 52;
+  const gridHeight = ((maxMinutes - minMinutes) / 60) * pxPerHour;
+
+  const wrap = document.createElement("div");
+  wrap.className = "week-grid-wrap";
+
+  const header = document.createElement("div");
+  header.className = "week-grid-header";
+  const spacer = document.createElement("div");
+  spacer.className = "week-axis-spacer";
+  header.appendChild(spacer);
+  dayOrder.forEach(d => {
+    const label = document.createElement("div");
+    label.className = "week-day-label";
+    label.textContent = DAY_NAMES[d];
+    header.appendChild(label);
+  });
+  wrap.appendChild(header);
+
+  const body = document.createElement("div");
+  body.className = "week-grid-body";
+  body.style.height = gridHeight + "px";
+
+  const axis = document.createElement("div");
+  axis.className = "week-time-axis";
+  for (let t = minMinutes; t <= maxMinutes; t += 60) {
+    const label = document.createElement("div");
+    label.className = "week-time-label";
+    label.style.top = ((t - minMinutes) / 60) * pxPerHour + "px";
+    label.textContent = minutesToTimeStr(t);
+    axis.appendChild(label);
+  }
+  body.appendChild(axis);
+
+  dayOrder.forEach(d => {
+    const col = document.createElement("div");
+    col.className = "week-day-col";
+
+    timed
+      .filter(x => x.session.dayOfWeek === d)
+      .forEach(x => {
+        const [h, m] = x.session.startTime.split(":").map(Number);
+        const startMin = h * 60 + m;
+        const endMin = startMin + x.session.hours * 60;
+        const top = ((startMin - minMinutes) / 60) * pxPerHour;
+        const height = Math.max(((endMin - startMin) / 60) * pxPerHour, 26);
+        const color = TIMETABLE_PALETTE[x.colorIdx % TIMETABLE_PALETTE.length];
+
+        const block = document.createElement("div");
+        block.className = "week-block";
+        block.style.top = top + "px";
+        block.style.height = height + "px";
+        block.style.background = color.bg;
+        block.style.borderLeft = `3px solid ${color.border}`;
+        block.title = `${x.course.name} ${x.session.startTime}~${minutesToTimeStr(endMin)}`;
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "week-block-name";
+        nameEl.textContent = x.course.name;
+        const timeEl = document.createElement("div");
+        timeEl.className = "week-block-time";
+        timeEl.textContent = `${x.session.startTime}~${minutesToTimeStr(endMin)}`;
+        block.appendChild(nameEl);
+        block.appendChild(timeEl);
+        col.appendChild(block);
+      });
+
+    body.appendChild(col);
+  });
+
+  wrap.appendChild(body);
+  container.appendChild(wrap);
+
+  if (untimed.length > 0) {
+    const untimedWrap = document.createElement("div");
+    untimedWrap.style.marginTop = "14px";
+
+    const title = document.createElement("h4");
+    title.textContent = "⏱ 시작 시간 미지정 수업";
+    title.style.fontSize = "11px";
+    title.style.color = "var(--text-faint)";
+    title.style.margin = "0 0 6px";
+    untimedWrap.appendChild(title);
+
+    const note = document.createElement("p");
+    note.style.fontSize = "10px";
+    note.style.color = "var(--text-faint)";
+    note.style.margin = "0 0 8px";
+    note.textContent = "'수업 등록'에서 시작 시간을 입력하면 위 시간표에 표시돼요.";
+    untimedWrap.appendChild(note);
+
+    const chipWrap = document.createElement("div");
+    chipWrap.style.display = "flex";
+    chipWrap.style.flexWrap = "wrap";
+    chipWrap.style.gap = "6px";
+    untimed.forEach(x => {
+      const color = TIMETABLE_PALETTE[x.colorIdx % TIMETABLE_PALETTE.length];
+      const chip = document.createElement("span");
+      chip.style.fontSize = "11px";
+      chip.style.padding = "4px 8px";
+      chip.style.borderRadius = "999px";
+      chip.style.background = color.bg;
+      chip.style.border = `1px solid ${color.border}`;
+      chip.textContent = `${DAY_NAMES[x.session.dayOfWeek]} · ${x.course.name} (${x.session.hours}h)`;
+      chipWrap.appendChild(chip);
+    });
+    untimedWrap.appendChild(chipWrap);
+    container.appendChild(untimedWrap);
+  }
 }
 
 function renderCalendar() {
@@ -1357,7 +1731,7 @@ function renderCalendar() {
       if (rec?.status === "absent") { dot.style.background = "#ef4444"; hasAbsent = true; }
       else if (rec?.status === "partial") { dot.style.background = "#f59e0b"; hasPartial = true; }
       else if (rec?.status === "present") { dot.style.background = "#22c55e"; hasPresent = true; }
-      else { dot.style.background = DAY_DOT_COLORS[item.session.dayOfWeek]; hasUnmarked = true; }
+      else { dot.style.background = "#6b6b76"; hasUnmarked = true; } // 미체크는 항상 회색 (요일별 색상은 '출석'의 초록색과 헷갈릴 수 있어 사용 안 함)
       dotsWrap.appendChild(dot);
     });
     cell.appendChild(dotsWrap);
